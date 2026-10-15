@@ -33,7 +33,7 @@ Failure modes the spec implies but no happy path catches, most likely first. Eac
 4. **An interpolated step colliding with an anchor step**, making two distinct syntax tokens the same colour. Pinned by Task 3's distinctness test.
 5. **Ramps inverted between modes**, so light mode looks like a broken negative. Pinned by Task 5's per-mode ordering test.
 6. **A malformed or short hex** (3- or 4-digit) slipping through. Pinned by Task 2's hex-validation test and Task 6's value-regex check.
-7. **Warmth leaking in** — a red that reads as a warning light or an orange that reads as a sunset breaks the whole idea, even though every individual colour is defensible. Pinned by Task 5's cold-dominance test.
+7. **Warmth leaking in** — a red that reads as a warning light or an orange that reads as a sunset breaks the whole idea, even though every individual colour is defensible. Chroma *comparison* across hues is the wrong metric for this (dark colours hold more chroma than light ones, and every colour here is already heavily desaturated). What actually carries the coldness is that nothing is vivid and the greys that dominate the screen lean blue-violet. Pinned by Task 5's vividness-ceiling and cold-neutral test.
 
 ---
 
@@ -400,7 +400,7 @@ Expected: FAIL — cannot find module.
 
 - [ ] **Step 3: Implement `buildTheme(spec)`**
 
-Deep-clone `base`, deep-merge each mode's `tokens` over the clone, expand that mode's `hue` anchors through `expandRamp`, throw `Missing hue "<name>" in <mode>` when any of `HUES` is absent, and set `base.categorical` from `spec.categorical`. Add `$schema: "https://opencode.ai/theme.json"` as a cosmetic key. Return `{ $schema, base, light, dark }` with `hue` as the first key of each mode so the files read sensibly. `DIALOG_DEFAULT` is the default from `docs/reference/opencode-theme-contract.md` — write it once and export it rather than inlining it in both modes.
+Deep-clone `base`, deep-merge each mode's `tokens` over the clone, expand that mode's `hue` anchors through `expandRamp`, throw `Missing hue "<name>" in <mode>` when any of `HUES` is absent, and set `base.categorical` from `spec.categorical`. A hue whose value is a **string** is an alias for another hue (`"$hue.cyan.400"`, `"$hue.blue"`) — pass it through untouched and never hand it to `expandRamp`, which only accepts the five-anchor object. Add `$schema: "https://opencode.ai/theme.json"` as a cosmetic key. Return `{ $schema, base, light, dark }` with `hue` as the first key of each mode so the files read sensibly. `DIALOG_DEFAULT` is the default from `docs/reference/opencode-theme-contract.md` — write it once and export it rather than inlining it in both modes.
 
 - [ ] **Step 4: Run it and confirm it passes**
 
@@ -426,7 +426,7 @@ git commit -m "feat: assemble a theme file from a palette spec"
 - Consumes: the spec shape from Task 4.
 - Produces: `fjord` (the default export), consumed by Task 7's build.
 
-Every anchor value is copied verbatim from the approved tables in the design spec. Do not retune anything.
+Every anchor value is copied verbatim from the approved tables in the design spec, with the single exception of light-mode `text.muted`, which the approved value fails the contrast floor and must be darkened.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -459,11 +459,12 @@ test("every syntax hue is a distinct colour in both modes", () => {
   }
 });
 
-test("fjord keeps its signature teal and ravn-style alias rules", () => {
+test("fjord aliases its signature hue and shares the common aliases", () => {
   const t = theme();
-  assert.equal(t.dark.hue.accent, t.dark.hue.cyan["400"]);
-  assert.equal(t.dark.hue.interactive, t.dark.hue.blue);
-  assert.equal(t.dark.hue.neutral, t.dark.hue.gray);
+  assert.equal(t.dark.hue.accent, "$hue.cyan.400");
+  assert.equal(t.light.hue.accent, "$hue.cyan.300");
+  assert.equal(t.dark.hue.interactive, "$hue.blue");
+  assert.equal(t.dark.hue.neutral, "$hue.gray");
 });
 
 test("approved anchor values are preserved exactly", () => {
@@ -479,16 +480,25 @@ test("light mode overrides text.muted to clear the contrast floor", () => {
   assert.notEqual(t.light.text.muted, t.dark.text.muted);
 });
 
-test("the coldest hues carry the most colour, not the warmest", () => {
+test("nothing in the palette is vivid, and the neutrals lean cold", () => {
   const t = theme();
-  const chroma = (mode, hue, step) => {
-    const { a, b } = srgbToOklab(hexToRgb(t[mode].hue[hue][step]));
-    return Math.hypot(a, b);
-  };
+  // Reference chroma, for scale: amber #ff8800 is 0.181, pure red #ff0000 is 0.258.
+  const CEILING = 0.12;
+  const lab = (hex) => srgbToOklab(hexToRgb(hex));
   for (const mode of ["dark", "light"]) {
-    const warm = Math.max(...["red","orange","yellow"].map((h) => chroma(mode, h, "300")));
-    const cool = Math.max(...["cyan","blue","green"].map((h) => chroma(mode, h, "300")));
-    assert.ok(cool > warm, `${mode}: cool chroma ${cool} must exceed warm ${warm}`);
+    for (const [hue, steps] of Object.entries(t[mode].hue)) {
+      for (const [step, hex] of Object.entries(steps)) {
+        const { a, b } = lab(hex);
+        const chroma = Math.hypot(a, b);
+        assert.ok(chroma < CEILING, `${mode} ${hue}.${step} ${hex} chroma ${chroma.toFixed(3)} >= ${CEILING}`);
+      }
+    }
+    // The greys dominate the screen, so they are what makes the theme read cold.
+    // Negative a and b is the blue-violet direction; a warm grey would show b > 0.
+    for (const [step, hex] of Object.entries(t[mode].hue.gray)) {
+      const { a, b } = lab(hex);
+      assert.ok(a < 0 && b < 0, `${mode} gray.${step} ${hex} leans warm (a ${a.toFixed(4)}, b ${b.toFixed(4)})`);
+    }
   }
 });
 ```
@@ -505,7 +515,7 @@ Expected: FAIL — cannot find module `../src/palettes/fjord.mjs`.
 Copy the four approved anchor tables for `fjord` and the two approved tables for `fjord` light, plus these binding rules:
 
 - `base` surfaces (dark values, since surfaces are literal): background `#0e1620`, raised `#16202c`/`#1c2934`/`#243341`, border `#24333f`, scrollbar `#24333f`, text `#c6d4e0`, muted `#7d90a3`. Light mode overrides all of these with its own approved values, and must darken `text.muted` past the 3:1 floor — `#5d6f80` is the starting suggestion, adjusted until Task 6 passes.
-- `hue.gray` is the neutral hue; `hue.neutral` aliases `$hue.gray`; `hue.accent` aliases `$hue.cyan.400`; `hue.interactive` aliases `$hue.blue`.
+- `hue.gray` is the neutral hue; `hue.neutral` aliases `$hue.gray`; `hue.interactive` aliases `$hue.blue`. The accent binding is **mode-specific**, because the approved accent lands on different steps in the two modes: dark `hue.accent` is `$hue.cyan.400` (the ramp's own fourth step interpolates to `#52a6af`, a fraction off the approved `#4aa7b3` — that is the approved "accent is a step of a base hue, never a bespoke ramp" decision showing through), light `hue.accent` is `$hue.cyan.300`, which is the approved `#22646f` exactly.
 - `base.syntax`: comment `$hue.gray.500`, keyword `$hue.cyan.300`, function `$hue.blue.300`, variable `$hue.gray.100`, string `$hue.green.300`, number `$hue.yellow.300`, type `$hue.purple.300`, operator `$hue.gray.500`, punctuation `$hue.gray.400`.
 - `base.markdown`: headings `$hue.cyan.300`, links `$hue.interactive.300`, inline code `$hue.green.300`, the rest from `gray`, using the same steps in both modes so `base` carries them once.
 - `base.diff`: text added `$hue.green.200`, removed `$hue.red.200`, context `$hue.gray.400`, hunkHeader `$hue.gray.500`; highlights `$hue.green.300` / `$hue.red.300`; line-number text `$hue.gray.500`; the background fills are per-mode overrides (dark `#163020` / `#2a1519` / `$hue.gray.800`, light `#d6e9dd` / `#f0d6d8` / `$hue.gray.700`).
@@ -583,7 +593,7 @@ Expected: FAIL — cannot find module.
 Checks, in this order, each pushing a message naming the offending path and mode:
 
 1. Every `tokenPaths()` entry resolves in `base` merged with each mode's overrides, for both modes.
-2. Every leaf value is `"transparent"`, a `HEX_RE` match, a `HUE_REF_RE` match, or a `TOKEN_REF_RE` match.
+2. Every leaf reachable through `tokenPaths()` is `"transparent"`, a `HEX_RE` match, a `HUE_REF_RE` match, or a `TOKEN_REF_RE` match. Iterate `tokenPaths()` rather than walking the object generically: `base.categorical` is an array of hue *names* (`["accent","purple","green","blue"]`), not a colour, so a generic walk would flag `"accent"`. Validate `categorical` separately as a non-empty array whose every entry is in `HUES`.
 3. Every mode defines all `HUES` at all nine steps.
 4. Ramp direction: gray lightness falls from `100` to `900` in dark and rises in light. Messages contain the word `direction`.
 5. The contrast matrix:
@@ -626,6 +636,7 @@ git commit -m "feat: validate theme completeness, ramp direction, and contrast"
 **Files:**
 - Create: `src/build.mjs`
 - Test: `test/build.test.mjs`
+- Create: `test/fixtures/broken.mjs` (a palette spec missing `hue.neutral` in its dark mode, used by the third test)
 - Creates: `dist/fjord.json` (gitignored, regenerable)
 
 **Interfaces:**
