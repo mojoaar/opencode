@@ -1,0 +1,6 @@
+{
+  "name": "opencode-nordic-themes",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "node --test", "build": "node src/build.mjs" }
+}
