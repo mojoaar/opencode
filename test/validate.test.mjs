@@ -221,7 +221,29 @@ test("an 8-digit hex token is shape-legal but reported as unmeasurable, not thro
   const t = fixture();
   t.light.text.muted = "#586a7aff";
   const { errors } = validateTheme(t);
-  assert.ok(errors.some((e) => e.includes("light") && e.includes("text.muted")), errors.join("\n"));
+  // The wording discriminates: if check 2 ever rejected 8-digit hex, the message
+  // would read "is not a colour" and this assertion would fail.
+  assert.ok(
+    errors.some((e) => e.includes("text.muted") && e.includes("8 digits") && e.includes("cannot measure")),
+    errors.join("\n"),
+  );
+});
+
+test("a 4-digit hex token is shape-legal but reported as unmeasurable, not thrown", () => {
+  const t = fixture();
+  t.light.text.muted = "#586a";
+  const { errors } = validateTheme(t);
+  assert.ok(
+    errors.some((e) => e.includes("text.muted") && e.includes("4 digits") && e.includes("cannot measure")),
+    errors.join("\n"),
+  );
+});
+
+test("a hue step that resolves back to itself is reported, not a stack overflow", () => {
+  const t = fixture();
+  t.dark.hue.gray["500"] = "$hue.neutral.500";
+  const { errors } = validateTheme(t);
+  assert.ok(errors.some((e) => e.includes("gray") && e.includes("500")), errors.join("\n"));
 });
 
 test("a step on a whole-hue alias resolves to that hue's step", () => {

@@ -103,6 +103,10 @@ function resolveColor(tree, value, seen = new Set()) {
 
   const hue = HUE_VALUE_RE.exec(value);
   if (hue) {
+    // A hue reference can recurse through a hue step (gray.500 = "$hue.neutral.500"),
+    // so remember each request and report the cycle instead of overflowing.
+    if (seen.has(value)) return { error: "has a circular hue reference" };
+    seen.add(value);
     const [, name, step] = hue;
     if (!HUES.includes(name)) return { error: `references unknown hue "${name}"` };
     if (tree.hue?.[name] === undefined) return { error: `references missing hue "${name}"` };
