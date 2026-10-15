@@ -115,7 +115,7 @@ export default {
       horizontalRule: "$text.muted",
       listItem: "$hue.gray.200",
       listEnumeration: "$hue.gray.300",
-      image: "$hue.interactive.300",
+      image: "$hue.gray.300",
       imageText: "$hue.gray.200",
       codeBlock: "$hue.gray.100",
     },
