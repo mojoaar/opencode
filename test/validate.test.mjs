@@ -210,6 +210,41 @@ test("an unresolvable contrast reference names the path and mode", () => {
   assert.ok(errors.some((e) => e.includes("text.muted") && e.includes("light")), errors.join("\n"));
 });
 
+test("a non-hex hue step value is reported, not thrown", () => {
+  const t = fixture();
+  t.dark.hue.gray["400"] = "not-a-colour";
+  const { errors } = validateTheme(t);
+  assert.ok(errors.some((e) => e.includes("dark") && e.includes("gray") && e.includes("400")), errors.join("\n"));
+});
+
+test("an 8-digit hex token is shape-legal but reported as unmeasurable, not thrown", () => {
+  const t = fixture();
+  t.light.text.muted = "#586a7aff";
+  const { errors } = validateTheme(t);
+  assert.ok(errors.some((e) => e.includes("light") && e.includes("text.muted")), errors.join("\n"));
+});
+
+test("a step on a whole-hue alias resolves to that hue's step", () => {
+  const t = fixture();
+  t.light.text.muted = "$hue.neutral.500";
+  t.light.hue.gray["500"] = t.light.background.base;
+  const { errors } = validateTheme(t);
+  assert.ok(
+    errors.some((e) => e.includes("light") && e.includes("text.muted") && e.includes("3:1")),
+    errors.join("\n"),
+  );
+});
+
+test("a requested step on a step-qualified alias is reported, naming the alias and step", () => {
+  const t = fixture();
+  t.light.text.muted = "$hue.accent.500";
+  const { errors } = validateTheme(t);
+  assert.ok(
+    errors.some((e) => e.includes("light") && e.includes("text.muted") && e.includes("accent") && e.includes("500")),
+    errors.join("\n"),
+  );
+});
+
 test("the contrast matrix covers syntax and diff text on the named surfaces", () => {
   const surfaces = new Set(CONTRAST_RULES.map((rule) => rule.bg));
   for (const surface of [

@@ -15,7 +15,7 @@
 // read `theme.base` plus each mode directly and never re-merge.
 
 import { HUES, tokenPaths, HEX_RE, TOKEN_REF_RE } from "./contract.mjs";
-import { contrastRatio, relativeLuminance } from "./color.mjs";
+import { contrastRatio, relativeLuminance, hexToRgb } from "./color.mjs";
 
 /**
  * The nine ramp steps. Declared here rather than imported: the contract module
@@ -88,23 +88,59 @@ function leafProblem(value) {
  */
 function resolveColor(tree, value, seen = new Set()) {
   if (typeof value !== "string") return { error: "is not a colour" };
-  if (HEX_RE.test(value)) return { hex: value };
+  if (HEX_RE.test(value)) {
+    // HEX_RE mirrors OpenCode's loader and admits 4- and 8-digit (alpha) hex,
+    // which the contrast maths cannot parse. Report that rather than let
+    // `hexToRgb` throw out of `relativeLuminance`/`contrastRatio`.
+    try {
+      hexToRgb(value);
+    } catch {
+      return { error: `is a hex with ${value.length - 1} digits, which the contrast maths cannot measure` };
+    }
+    return { hex: value };
+  }
   if (value === "transparent") return { error: "is transparent, so it has no contrast" };
 
   const hue = HUE_VALUE_RE.exec(value);
   if (hue) {
     const [, name, step] = hue;
     if (!HUES.includes(name)) return { error: `references unknown hue "${name}"` };
-    const target = tree.hue?.[name];
-    if (target === undefined) return { error: `references missing hue "${name}"` };
-    if (typeof target === "string") {
-      if (seen.has(value)) return { error: "has a circular hue alias" };
-      seen.add(value);
-      return resolveColor(tree, target, seen);
+    if (tree.hue?.[name] === undefined) return { error: `references missing hue "${name}"` };
+
+    // Follow the alias chain to a real ramp *before* deciding, so a step asked
+    // of an alias is honoured when the chain ends at a whole ramp, and reported
+    // when a link pinned a single step.
+    let hueName = name;
+    let pinned;
+    const aliases = new Set();
+    while (typeof tree.hue[hueName] === "string") {
+      const alias = tree.hue[hueName];
+      if (aliases.has(alias)) return { error: "has a circular hue alias" };
+      aliases.add(alias);
+      const ref = HUE_VALUE_RE.exec(alias);
+      if (!ref || !HUES.includes(ref[1])) return { error: `references an invalid hue alias: ${alias}` };
+      if (ref[2] !== undefined) {
+        if (step !== undefined) {
+          return {
+            error: `references hue "${name}" at step ${step}, but "${name}" aliases the single step ${ref[1]}.${ref[2]}`,
+          };
+        }
+        pinned = ref[2];
+      }
+      hueName = ref[1];
+      if (tree.hue[hueName] === undefined) return { error: `references missing hue "${hueName}"` };
     }
-    if (step === undefined) return { error: `references hue "${name}" without a step` };
-    if (typeof target[step] !== "string") return { error: `references missing hue step "${name}.${step}"` };
-    return resolveColor(tree, target[step], seen);
+
+    const ramp = tree.hue[hueName];
+    if (typeof ramp !== "object" || ramp === null) {
+      return { error: `references hue "${hueName}" which is neither a ramp nor an alias` };
+    }
+    const resolvedStep = step ?? pinned;
+    if (resolvedStep === undefined) return { error: `references hue "${name}" without a step` };
+    if (typeof ramp[resolvedStep] !== "string") {
+      return { error: `references missing hue step "${name}.${resolvedStep}"` };
+    }
+    return resolveColor(tree, ramp[resolvedStep], seen);
   }
 
   if (TOKEN_REF_RE.test(value)) {
@@ -195,7 +231,7 @@ export function validateTheme(theme) {
         target = tree.hue[alias[1]];
       }
       if (target === undefined) continue;
-      if (typeof target !== "object") {
+      if (target === null || typeof target !== "object") {
         errors.push(`[${mode}] hue ${name} is neither a ramp nor a hue alias`);
         continue;
       }
@@ -208,8 +244,19 @@ export function validateTheme(theme) {
     // are covered through the ramp they point at.
     for (const name of HUES) {
       const ramp = tree.hue[name];
-      if (typeof ramp !== "object") continue;
-      const lums = STEPS.map((step) => (typeof ramp[step] === "string" ? relativeLuminance(ramp[step]) : undefined));
+      if (ramp === null || typeof ramp !== "object") continue;
+      // Resolve each step through `resolveColor` so a non-measurable value is
+      // reported against the hue, step and mode instead of throwing. A missing
+      // step is already named by check 3, so it stays silent here.
+      const lums = STEPS.map((step) => {
+        if (typeof ramp[step] !== "string") return undefined;
+        const resolved = resolveColor(tree, ramp[step]);
+        if (resolved.error) {
+          errors.push(`[${mode}] hue ${name} step ${step} ${resolved.error}`);
+          return undefined;
+        }
+        return relativeLuminance(resolved.hex);
+      });
       for (let i = 0; i < STEPS.length - 1; i += 1) {
         if (lums[i] === undefined || lums[i + 1] === undefined) continue;
         const ordered = mode === "dark" ? lums[i] > lums[i + 1] : lums[i] < lums[i + 1];
