@@ -29,7 +29,9 @@ test("the written file passes validation", () => {
 test("build reports a broken palette instead of writing it", () => {
   const outDir = mkdtempSync(join(tmpdir(), "fjord-build-"));
   const { built, errors } = buildAll({
-    palettesDir: join(root, "test", "fixtures", "broken"),
+    // Relative, like the CLI caller: this is the form that used to resolve
+    // against src/build.mjs and break.
+    palettesDir: "test/fixtures/broken",
     outDir,
   });
   assert.deepEqual(built, []);

@@ -9,7 +9,7 @@
 import { readdirSync, mkdirSync, writeFileSync, copyFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { buildTheme } from "./theme.mjs";
 import { validateTheme } from "./validate.mjs";
@@ -45,7 +45,9 @@ export function buildAll({ palettesDir, outDir, install = false }) {
   for (const name of names) {
     let theme;
     try {
-      const spec = require(join(palettesDir, `${name}.mjs`)).default;
+      // `resolve` (cwd) keeps this in step with the `readdirSync` above; a bare
+      // `require` would resolve against this file, not the caller's cwd.
+      const spec = require(resolve(palettesDir, `${name}.mjs`)).default;
       theme = buildTheme(spec);
     } catch (error) {
       // buildTheme throws on a malformed spec (a missing hue), before the
@@ -100,7 +102,7 @@ function main() {
   for (const line of summarize(built, errors)) console.log(line);
   if (errors.length > 0) {
     for (const error of errors) console.error(error);
-    process.exit(1);
+    process.exitCode = 1;
   }
 }
 
