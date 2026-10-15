@@ -64,8 +64,11 @@ export default {
       text: {
         added: "$hue.green.200",
         removed: "$hue.red.200",
-        context: "$hue.gray.400",
-        hunkHeader: "$hue.gray.500",
+        // The greys that carry text all point at $text.muted, so light mode's
+        // approved corrected grey (#586a7a) reaches them too. Dark $text.muted
+        // is #7d90a3, byte-identical to dark gray.500.
+        context: "$text.muted",
+        hunkHeader: "$text.muted",
       },
       background: {
         added: "#163020",
@@ -77,7 +80,7 @@ export default {
       // approved line fills rather than inventing hexes. Defined once here:
       // each mode's own diff.background values flow through.
       lineNumber: {
-        text: "$hue.gray.500",
+        text: "$text.muted",
         background: { added: "$diff.background.added", removed: "$diff.background.removed" },
       },
     },
@@ -106,10 +109,10 @@ export default {
       link: "$hue.interactive.300",
       linkText: "$hue.interactive.200",
       code: "$hue.green.300",
-      blockQuote: "$hue.gray.400",
+      blockQuote: "$text.muted",
       emphasis: "$hue.gray.100",
       strong: "$hue.gray.100",
-      horizontalRule: "$hue.gray.500",
+      horizontalRule: "$text.muted",
       listItem: "$hue.gray.200",
       listEnumeration: "$hue.gray.300",
       image: "$hue.interactive.300",
@@ -153,7 +156,7 @@ export default {
         text: { base: "#1b2733", muted: "#586a7a" },
         background: {
           base: "#dbe3ea",
-          raised: { base: "#cfd8e1", high: "#c6d0da", max: "#b6c2ce" },
+          raised: { base: "#cfd8e1", high: "#c8d2dc", max: "#c1cbd6" },
         },
         border: { base: "#b6c2ce" },
         scrollbar: { base: "#b6c2ce" },
