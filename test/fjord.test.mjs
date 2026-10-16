@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fjord from "../src/palettes/fjord.mjs";
 import { buildTheme } from "../src/theme.mjs";
+import { validateTheme } from "../src/validate.mjs";
+import { tokenPaths } from "../src/contract.mjs";
 import { hexToRgb, srgbToOklab } from "../src/color.mjs";
 
 const L = (hex) => srgbToOklab(hexToRgb(hex)).L;
@@ -14,13 +16,20 @@ function at(tree, path) {
 
 /**
  * Resolve a theme value the way OpenCode does: `$hue.<name>.<step>` is that
- * mode's step, `$hue.<name>` is that mode's whole hue, `$<token.path>` walks
- * the mode's merged tree.
+ * mode's step, following whole-hue aliases (`accent` -> `cyan`); `$<token.path>`
+ * walks the mode's merged tree. A bare whole-hue reference is not a colour and
+ * must never reach here.
  */
 function resolve(t, mode, ref) {
   if (ref.startsWith("$hue.")) {
     const [name, step] = ref.slice("$hue.".length).split(".");
-    return step === undefined ? t[mode].hue[name] : t[mode].hue[name][step];
+    assert.ok(step !== undefined, `${ref} is a whole-hue reference, not a colour`);
+    let ramp = t[mode].hue[name];
+    while (typeof ramp === "string") {
+      const [target] = ramp.slice("$hue.".length).split(".");
+      ramp = t[mode].hue[target];
+    }
+    return ramp[step];
   }
   return at(t[mode], ref.slice(1));
 }
@@ -34,10 +43,10 @@ test("dark runs light to dark, light runs dark to light", () => {
 test("every syntax hue is a distinct colour in both modes", () => {
   const t = theme();
   for (const mode of ["dark","light"]) {
-    const keys = Object.keys(t.base.syntax);
+    const syntax = t[mode].syntax;
     const seen = new Map();
-    for (const k of keys) {
-      const v = resolve(t, mode, t.base.syntax[k]);
+    for (const k of Object.keys(syntax)) {
+      const v = resolve(t, mode, syntax[k]);
       assert.ok(!seen.has(v), `${k} and ${seen.get(v)} are both ${v} in ${mode}`);
       seen.set(v, k);
     }
@@ -46,10 +55,40 @@ test("every syntax hue is a distinct colour in both modes", () => {
 
 test("fjord aliases its signature hue and shares the common aliases", () => {
   const t = theme();
-  assert.equal(t.dark.hue.accent, "$hue.cyan.400");
-  assert.equal(t.light.hue.accent, "$hue.cyan.300");
+  // The accent aliases the hue in both modes; the step is chosen per reference
+  // site (cyan.400 dark, cyan.300 light), so the alias itself is whole-hue.
+  assert.equal(t.dark.hue.accent, "$hue.cyan");
+  assert.equal(t.light.hue.accent, "$hue.cyan");
   assert.equal(t.dark.hue.interactive, "$hue.blue");
   assert.equal(t.dark.hue.neutral, "$hue.gray");
+});
+
+test("fjord validates: the palette and the validator agree", () => {
+  assert.deepEqual(validateTheme(buildTheme(fjord)), { ok: true, errors: [] });
+});
+
+test("no colour value in the built theme is a whole-hue reference", () => {
+  const t = theme();
+  const wholeHue = /^\$hue\.[^.]+$/;
+  for (const mode of ["dark", "light"]) {
+    for (const path of tokenPaths()) {
+      const value = at(t[mode], path);
+      assert.ok(!wholeHue.test(value), `${mode} ${path} = ${value} is a whole-hue reference, not a colour`);
+    }
+  }
+});
+
+test("the action groups resolve to measurable colours in both modes", () => {
+  const t = theme();
+  for (const mode of ["dark", "light"]) {
+    for (const group of ["text", "background"]) {
+      for (const action of ["primary", "secondary", "destructive"]) {
+        for (const [state, value] of Object.entries(at(t[mode], `${group}.action.${action}`))) {
+          assert.match(resolve(t, mode, value), /^#[\da-f]{6}$/i, `${mode} ${group}.action.${action}.${state}`);
+        }
+      }
+    }
+  }
 });
 
 test("approved anchor values are preserved exactly", () => {

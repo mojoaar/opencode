@@ -9,6 +9,19 @@
 // Anchors are the five approved steps (100, 300, 500, 700, 900); buildTheme
 // expands the other four. Surfaces are literal values, not ramp steps — the
 // contract does not require them to be addressable.
+//
+// Value syntax (docs/reference/opencode-theme-contract.md). A hue alias must be
+// a whole-hue reference — `"$hue.cyan"` — because the loader looks the entire
+// capture up in the hue map; `"$hue.cyan.400"` throws. A *colour* in any token
+// (`text.*`, `background.*`, `diff.*`, `border`, `scrollbar`) needs a step:
+// `$hue.<name>.<100..900>`, and a whole-hue reference there is not a colour.
+// `syntax.*` and `markdown.*` are stricter still: a hex or a step-qualified
+// hue reference only — no `"transparent"`, no `$<token.path>`.
+//
+// The file schema also requires `base` to define every group; a mode may
+// override individual tokens but not supply missing structure. So the values
+// that differ per mode live in `base` at their dark-mode step and are overridden
+// in `tokens` for both modes below.
 
 /** The five interaction states every stateful group carries. */
 const allStates = (value) => ({
@@ -20,6 +33,19 @@ const allStates = (value) => ({
   $disabled: value,
 });
 
+/**
+ * The six action groups. The accent's step is pinned at the reference site, not
+ * on the alias: primary is cyan.400 dark / cyan.300 light — the approved
+ * anchors — and secondary/destructive use neutral and red at the step that
+ * keeps contrast. Returns the dark-mode binding, which `base` carries and both
+ * modes restate.
+ */
+const actionGroups = (accent, neutral, red) => ({
+  primary: allStates(accent),
+  secondary: allStates(neutral),
+  destructive: allStates(red),
+});
+
 export default {
   name: "fjord",
   // The signature accent first, then the hues furthest from teal.
@@ -29,11 +55,7 @@ export default {
     text: {
       base: "#c6d4e0",
       muted: "#7d90a3",
-      action: {
-        primary: allStates("$hue.accent"),
-        secondary: allStates("$hue.neutral"),
-        destructive: allStates("$hue.red"),
-      },
+      action: actionGroups("$hue.accent.400", "$hue.neutral.500", "$hue.red.400"),
       formfield: allStates("$text.base"),
       feedback: {
         error: { base: "$hue.red.200", muted: "$hue.red.300" },
@@ -45,11 +67,7 @@ export default {
     background: {
       base: "#0e1620",
       raised: { base: "#16202c", high: "#1c2934", max: "#243341" },
-      action: {
-        primary: allStates("$hue.accent"),
-        secondary: allStates("$hue.neutral"),
-        destructive: allStates("$hue.red"),
-      },
+      action: actionGroups("$hue.accent.400", "$hue.neutral.500", "$hue.red.400"),
       formfield: allStates("$background.raised.base"),
       feedback: {
         error: { base: "$hue.red.700" },
@@ -66,7 +84,8 @@ export default {
         removed: "$hue.red.200",
         // The greys that carry text all point at $text.muted, so light mode's
         // approved corrected grey (#586a7a) reaches them too. Dark $text.muted
-        // is #7d90a3, byte-identical to dark gray.500.
+        // is #7d90a3, byte-identical to dark gray.500. diff.* is a general
+        // colour position, so a `$<token.path>` reference is legal here.
         context: "$text.muted",
         hunkHeader: "$text.muted",
       },
@@ -84,16 +103,14 @@ export default {
         background: { added: "$diff.background.added", removed: "$diff.background.removed" },
       },
     },
-    // The three grey tokens cannot all sit on the approved gray.500: the ramp
-    // anchor #7b8b9c is the approved light-mode muted grey, which measures
-    // 2.69:1 on the light background (under the 3:1 floor), and `base` carries
-    // one step for both modes. So comment and operator move off it. `comment`
-    // takes `$text.muted`, which is #7d90a3 in dark — byte-identical to the
-    // approved comment grey — and the approved corrected #586a7a in light.
-    // operator and punctuation then take the two steps below it so all nine
-    // syntax tokens stay distinct in both modes.
+    // syntax and markdown are the strict subtype: a hex or a step-qualified hue
+    // reference only. `comment` cannot sit on the approved gray.500 — that is
+    // #7b8b9c in light mode, 2.69:1 on the light background, under the 3:1
+    // floor — so light mode overrides it to gray.200 (7.92:1). `operator` and
+    // `punctuation` then take the two steps between it and `variable` so all
+    // nine syntax tokens stay distinct in both modes.
     syntax: {
-      comment: "$text.muted",
+      comment: "$hue.gray.500",
       keyword: "$hue.cyan.300",
       function: "$hue.blue.300",
       variable: "$hue.gray.100",
@@ -109,10 +126,10 @@ export default {
       link: "$hue.interactive.300",
       linkText: "$hue.interactive.200",
       code: "$hue.green.300",
-      blockQuote: "$text.muted",
+      blockQuote: "$hue.gray.500",
       emphasis: "$hue.gray.100",
       strong: "$hue.gray.100",
-      horizontalRule: "$text.muted",
+      horizontalRule: "$hue.gray.500",
       listItem: "$hue.gray.200",
       listEnumeration: "$hue.gray.300",
       image: "$hue.gray.300",
@@ -132,9 +149,17 @@ export default {
         cyan: { 100: "#cbf0f2", 300: "#6fc4cd", 500: "#358892", 700: "#1c4c53", 900: "#0a1d20" },
         blue: { 100: "#cfe4f7", 300: "#7fb2dc", 500: "#4278ad", 700: "#234468", 900: "#0e1c2c" },
         purple: { 100: "#d5cde8", 300: "#9183b6", 500: "#594d7d", 700: "#2f2746", 900: "#100d1a" },
-        accent: "$hue.cyan.400",
+        // The signature accent aliases the hue; the step is chosen at the
+        // reference site (cyan.400 here, cyan.300 in light).
+        accent: "$hue.cyan",
         interactive: "$hue.blue",
         neutral: "$hue.gray",
+      },
+      tokens: {
+        text: { action: actionGroups("$hue.accent.400", "$hue.neutral.500", "$hue.red.400") },
+        background: { action: actionGroups("$hue.accent.400", "$hue.neutral.500", "$hue.red.400") },
+        syntax: { comment: "$hue.gray.500" },
+        markdown: { blockQuote: "$hue.gray.500", horizontalRule: "$hue.gray.500" },
       },
     },
 
@@ -148,21 +173,28 @@ export default {
         cyan: { 100: "#0d3540", 300: "#22646f", 500: "#3f95a2", 700: "#a3d0d7", 900: "#d3e8ec" },
         blue: { 100: "#123047", 300: "#2c5f80", 500: "#4f8fb0", 700: "#a8c9dd", 900: "#d5e5ef" },
         purple: { 100: "#2c2148", 300: "#514173", 500: "#7f6ea6", 700: "#bfb2d6", 900: "#e2dbef" },
-        accent: "$hue.cyan.300",
+        accent: "$hue.cyan",
         interactive: "$hue.blue",
         neutral: "$hue.gray",
       },
       tokens: {
-        text: { base: "#1b2733", muted: "#586a7a" },
+        text: {
+          base: "#1b2733",
+          muted: "#586a7a",
+          action: actionGroups("$hue.accent.300", "$hue.neutral.500", "$hue.red.300"),
+        },
         background: {
           base: "#dbe3ea",
           raised: { base: "#cfd8e1", high: "#c8d2dc", max: "#c1cbd6" },
+          action: actionGroups("$hue.accent.300", "$hue.neutral.500", "$hue.red.300"),
         },
         border: { base: "#b6c2ce" },
         scrollbar: { base: "#b6c2ce" },
         diff: {
           background: { added: "#d6e9dd", removed: "#f0d6d8", context: "$hue.gray.700" },
         },
+        syntax: { comment: "$hue.gray.200" },
+        markdown: { blockQuote: "$hue.gray.300", horizontalRule: "$hue.gray.300" },
       },
     },
   },
