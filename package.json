@@ -2,5 +2,9 @@
   "name": "opencode-nordic-themes",
   "private": true,
   "type": "module",
-  "scripts": { "test": "node --test \"test/**/*.test.mjs\"", "build": "node src/build.mjs" }
+  "scripts": {
+    "test": "node --test \"test/**/*.test.mjs\"",
+    "build": "node src/build.mjs",
+    "check:loader": "node tools/check-loader.mjs"
+  }
 }
