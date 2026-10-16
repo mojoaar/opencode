@@ -322,12 +322,14 @@ Decisions I made rather than asking, flagged here so they can be reversed.
 
 And these, added after the builder check:
 
-- **The signature accent aliases a step of a base hue**, rather than
-  getting a bespoke nine-step ramp. The approved mockups only showed odd
-  steps (100, 300, 500, 700, 900), which is why the signature hexes looked
-  like they sat off the ramps — fjord's `#4aa7b3` is the `cyan.400` that
-  never got drawn. ravn's violet is `purple.300` and nordlys's aurora green
-  is `green.300` already. No retuning of any approved hue is needed.
+- **The signature accent aliases the hue; the step is chosen at the
+  reference site**, rather than getting a bespoke nine-step ramp. The approved
+  mockups only showed odd steps (100, 300, 500, 700, 900), which is why the
+  signature hexes looked like they sat off the ramps — fjord's `#4aa7b3` is the
+  `cyan.400` that never got drawn, so its accent actions bind `$hue.accent.400`
+  in dark and `$hue.accent.300` in light. ravn's violet is `purple.300` and
+  nordlys's aurora green is `green.300` already. No retuning of any approved hue
+  is needed.
 - **Surfaces are literal values in `base`** — background, raised, border,
   text and muted are not required to be addressable steps of a ramp. The
   gray ramps are not retuned to absorb them.

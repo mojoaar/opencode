@@ -461,8 +461,8 @@ test("every syntax hue is a distinct colour in both modes", () => {
 
 test("fjord aliases its signature hue and shares the common aliases", () => {
   const t = theme();
-  assert.equal(t.dark.hue.accent, "$hue.cyan.400");
-  assert.equal(t.light.hue.accent, "$hue.cyan.300");
+  assert.equal(t.dark.hue.accent, "$hue.cyan");
+  assert.equal(t.light.hue.accent, "$hue.cyan");
   assert.equal(t.dark.hue.interactive, "$hue.blue");
   assert.equal(t.dark.hue.neutral, "$hue.gray");
 });
@@ -515,11 +515,11 @@ Expected: FAIL — cannot find module `../src/palettes/fjord.mjs`.
 Copy the four approved anchor tables for `fjord` and the two approved tables for `fjord` light, plus these binding rules:
 
 - `base` surfaces (dark values, since surfaces are literal): background `#0e1620`, raised `#16202c`/`#1c2934`/`#243341`, border `#24333f`, scrollbar `#24333f`, text `#c6d4e0`, muted `#7d90a3`. Light mode overrides all of these with its own approved values, and must darken `text.muted` past the 3:1 floor — `#5d6f80` is the starting suggestion, adjusted until Task 6 passes.
-- `hue.gray` is the neutral hue; `hue.neutral` aliases `$hue.gray`; `hue.interactive` aliases `$hue.blue`. The accent binding is **mode-specific**, because the approved accent lands on different steps in the two modes: dark `hue.accent` is `$hue.cyan.400` (the ramp's own fourth step interpolates to `#52a6af`, a fraction off the approved `#4aa7b3` — that is the approved "accent is a step of a base hue, never a bespoke ramp" decision showing through), light `hue.accent` is `$hue.cyan.300`, which is the approved `#22646f` exactly.
+- `hue.gray` is the neutral hue; `hue.neutral` aliases `$hue.gray`; `hue.interactive` aliases `$hue.blue`. The accent **aliases the hue in both modes** — `hue.accent` is `$hue.cyan`, never `$hue.cyan.400` (the loader looks the whole `/^\$hue\.(.+)$/` capture up in the hue map, so a step-qualified alias throws) — and the **step is chosen at each reference site**, because the approved accent lands on different steps in the two modes: `text.action.*` / `background.action.*` use `$hue.accent.400` in dark (the ramp's own fourth step interpolates to `#52a6af`, a fraction off the approved `#4aa7b3` — the approved "accent aliases the hue; the step is chosen at the reference site" decision showing through) and `$hue.accent.300` in light, which is the approved `#22646f` exactly.
 - `base.syntax`: comment `$hue.gray.500`, keyword `$hue.cyan.300`, function `$hue.blue.300`, variable `$hue.gray.100`, string `$hue.green.300`, number `$hue.yellow.300`, type `$hue.purple.300`, operator `$hue.gray.500`, punctuation `$hue.gray.400`.
 - `base.markdown`: headings `$hue.cyan.300`, links `$hue.interactive.300`, inline code `$hue.green.300`, the rest from `gray`, using the same steps in both modes so `base` carries them once.
 - `base.diff`: text added `$hue.green.200`, removed `$hue.red.200`, context `$hue.gray.400`, hunkHeader `$hue.gray.500`; highlights `$hue.green.300` / `$hue.red.300`; line-number text `$hue.gray.500`; the background fills are per-mode overrides (dark `#163020` / `#2a1519` / `$hue.gray.800`, light `#d6e9dd` / `#f0d6d8` / `$hue.gray.700`).
-- `base.background.action.primary` uses `$hue.accent`, `secondary` uses `$hue.neutral`, `destructive` uses `$hue.red`; `base.text.feedback.*` mirrors those, with `success` on `green`, `warning` on `yellow`, `info` on `cyan`.
+- `base.background.action.{primary,secondary,destructive}` — and the matching `base.text.action.*` — are **step-qualified**, because a whole-hue reference is not a colour: `primary` `$hue.accent.400` dark / `$hue.accent.300` light, `secondary` `$hue.neutral.500`, `destructive` `$hue.red.400` dark / `$hue.red.300` light. Because the steps differ per mode, both modes restate the six groups in their `tokens` (`base` keeps a complete tree, as the file schema requires). `base.text.feedback.*` mirrors them, with `success` on `green`, `warning` on `yellow`, `info` on `cyan`.
 - `categorical`: `["accent","purple","green","blue"]` — accent first, then the hues furthest from teal.
 
 - [ ] **Step 4: Run it and confirm it passes**

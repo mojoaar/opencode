@@ -27,6 +27,20 @@ The embedded themes are JavaScript source, not JSON — values are quoted but
 keys are bare (`border:{base:"#484848"}`). So they cannot be `JSON.parse`d
 wholesale. Read the schema-construction regions instead.
 
+The theme *loader* is readable source too. Locate a distinctive function or
+error string and get its byte offset, then take a bounded slice — never
+`strings` the whole 186 MB binary into a pipe:
+
+```sh
+B=~/.opencode/bin/opencode
+grep -a -b -o -F 'references a missing hue' "$B"     # -> offset:match
+dd if="$B" bs=1 skip=$((offset - 900)) count=6000 | strings -a
+```
+
+`tools/check-loader.mjs` does exactly this: it lifts the resolver segment from
+`function ae(e)` to the next `function XI(` and runs the loader's own per-mode
+resolve over `dist/fjord.json`.
+
 ## File shape
 
 ```jsonc
@@ -66,15 +80,47 @@ interpolated step must never duplicate an anchor step.
 
 ## Value syntax
 
-A colour value is one of:
+There are **three** value types, and the loader treats them differently. Each
+rule below is quoted from, or backed by, the installed binary (v2.0.31) — the
+error strings are the loader's own.
 
-- a hex string — the binary's regex is
-  `^#(?:[\da-f]{3}|[\da-f]{4}|[\da-f]{6}|[\da-f]{8})$`
+**A hue alias** — a `modes.<mode>.hue.<name>` value. It is either a full
+nine-step ramp object, or a *whole-hue* reference. The loader matches
+`/^\$hue\.(.+)$/` and looks the **entire** capture up in the hue map, so
+`"$hue.cyan"` is legal and `"$hue.cyan.400"` throws:
+
+```
+Hue alias "$hue.cyan.400" references a missing hue
+```
+
+Built-ins and the V1→V2 converter use only whole-hue aliases.
+
+**A colour** — any token under `text`, `background`, `border`, `scrollbar` or
+`diff`. Legal forms:
+
+- a hex — `^#(?:[\da-f]{3}|[\da-f]{4}|[\da-f]{6}|[\da-f]{8})$`
 - `"transparent"`
-- a hue reference — `$hue.<name>` (whole hue) or `$hue.<name>.<100..900>`,
-  enforced by `^\$hue\..+\.(?:100|200|300|400|500|600|700|800|900)$`
 - a token reference — `$<dotted.path>`, e.g. `$text.muted`,
   `$background.raised.base`
+- a **step-qualified** hue reference — `$hue.<name>.<100..900>`
+
+A bare whole-hue reference is **not** a colour. The loader special-cases only
+`hue.<name>.<step>`, so `$hue.accent` resolves to the whole ramp object and
+throws:
+
+```
+Theme reference "$hue.accent" at ".text.action.primary.base" is not a color
+```
+
+`$hue.<alias>.<step>` *is* legal even when `<alias>` is a whole-hue alias: the
+built-ins use `$hue.neutral.200`, and the loader resolves the step through the
+alias.
+
+**A `syntax.*` / `markdown.*` value** is a stricter subtype: a hex, or a
+step-qualified hue reference. The schema's type is
+`hex | ^\$hue\..+\.(?:100|200|300|400|500|600|700|800|900)$`, so
+`"transparent"`, a token reference such as `$text.muted`, and a whole-hue
+reference are all rejected.
 
 ## Token tree
 
