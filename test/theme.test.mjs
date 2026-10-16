@@ -26,7 +26,7 @@ function huesFor(gray, chrome) {
     cyan: chrome,
     blue: chrome,
     purple: chrome,
-    accent: "$hue.cyan.400",
+    accent: "$hue.cyan",
     interactive: "$hue.blue",
     neutral: "$hue.gray",
   };
@@ -41,9 +41,9 @@ function fixture() {
         base: "#c6d4e0",
         muted: "#7d90a3",
         action: {
-          primary: allStates("$hue.accent"),
-          secondary: allStates("$hue.neutral"),
-          destructive: allStates("$hue.red"),
+          primary: allStates("$hue.accent.400"),
+          secondary: allStates("$hue.neutral.500"),
+          destructive: allStates("$hue.red.400"),
         },
         formfield: allStates("$text.base"),
         feedback: {
@@ -57,9 +57,9 @@ function fixture() {
         base: "#0e1620",
         raised: { base: "#16202c", high: "#1c2934", max: "#243341" },
         action: {
-          primary: allStates("$hue.accent"),
-          secondary: allStates("$hue.neutral"),
-          destructive: allStates("$hue.red"),
+          primary: allStates("$hue.accent.400"),
+          secondary: allStates("$hue.neutral.500"),
+          destructive: allStates("$hue.red.400"),
         },
         formfield: allStates("$background.raised.base"),
         feedback: {
@@ -150,10 +150,12 @@ test("both modes define all 11 hues at all 9 steps", () => {
       if (typeof value === "string") {
         assert.match(value, HUE_REF_RE, `${mode}.hue.${name} is not a hue reference`);
         const [target, step] = value.slice("$hue.".length).split(".");
+        // A hue alias must be whole-hue: the loader looks the whole capture up
+        // in the hue map, so a step-qualified alias is not a legal alias.
+        assert.equal(step, undefined, `${mode}.hue.${name} aliases a single step`);
         const ramp = hues[target];
         assert.ok(ramp, `${mode}.hue.${name} aliases missing hue ${target}`);
-        const steps = step === undefined ? STEPS : [step];
-        for (const s of steps) assert.equal(typeof ramp[s], "string", `${mode}.hue.${target}.${s}`);
+        for (const s of STEPS) assert.equal(typeof ramp[s], "string", `${mode}.hue.${target}.${s}`);
       } else {
         for (const s of STEPS) assert.equal(typeof value[s], "string", `${mode}.hue.${name}.${s}`);
       }

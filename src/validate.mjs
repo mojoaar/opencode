@@ -4,15 +4,33 @@
 // points at the token to retune rather than at the validator:
 //
 //   1. every contract token path resolves in the shared base and both modes;
-//   2. every token leaf is a legal colour value (`transparent`, a hex, a
-//      token reference, or a hue reference);
-//   3. every mode defines all `HUES` at all nine steps;
+//   2. every token leaf holds a value of the right type for its position — see
+//      "three value types" below;
+//   3. every mode defines all `HUES` at all nine steps, and every hue alias is a
+//      whole-hue reference;
 //   4. ramps run the right way: dark falls 100 -> 900, light rises;
 //   5. the contrast matrix from the design spec holds in both modes.
 //
 // `validateTheme` takes a *built* theme (the `buildTheme` output), never a spec.
 // Each `light`/`dark` section is a complete standalone tree, so checks 1 and 2
 // read `theme.base` plus each mode directly and never re-merge.
+//
+// The three value types, from the loader (see
+// docs/reference/opencode-theme-contract.md and the schema in the binary):
+//
+//   * a hue alias — a `modes.<mode>.hue.<name>` value — is either a nine-step
+//     ramp object or a *whole-hue* reference `$hue.<name>`. The loader looks the
+//     entire `/^\$hue\.(.+)$/` capture up in the hue map, so `$hue.cyan.400`
+//     throws `Hue alias ... references a missing hue`. A step-qualified alias is
+//     an error here for the same reason.
+//   * a colour — any token under `text`/`background`/`border`/`scrollbar`/`diff`
+//     — is `"transparent"`, a hex, a token reference `$<dotted.path>`, or a
+//     *step-qualified* hue reference `$hue.<name>.<step>`. A bare whole-hue
+//     reference is not a colour: the loader special-cases only
+//     `hue.<name>.<step>`, so `$hue.accent` resolves to the whole ramp object and
+//     throws `... is not a color`.
+//   * a syntax/markdown value is stricter: a hex or a step-qualified hue
+//     reference only. No `"transparent"`, no token reference.
 
 import { HUES, tokenPaths, HEX_RE, TOKEN_REF_RE } from "./contract.mjs";
 import { contrastRatio, relativeLuminance, hexToRgb } from "./color.mjs";
@@ -26,8 +44,11 @@ const STEPS = ["100", "200", "300", "400", "500", "600", "700", "800", "900"];
 
 const MODES = ["light", "dark"];
 
-/** `$hue.<name>` or `$hue.<name>.<step>` — whole-hue aliases are legal here. */
+/** `$hue.<name>` or `$hue.<name>.<step>` — a whole hue as well as one step. */
 const HUE_VALUE_RE = /^\$hue\.([^.]+)(?:\.([^.]+))?$/;
+
+/** syntax/markdown accept a narrower set than the other colour positions. */
+const isSyntaxOrMarkdown = (path) => path.startsWith("syntax.") || path.startsWith("markdown.");
 
 /**
  * The contrast floors from the design spec: body text, muted text, every syntax
@@ -65,18 +86,35 @@ function lookup(tree, path) {
 }
 
 /**
- * Why a token leaf is not a usable colour, or `null` if it is. Used by check 2,
- * which is syntactic: it does not resolve references, only their shape.
+ * Why a token leaf is not a usable value *for its position*, or `null` if it is.
+ * Used by check 2, which is syntactic: it does not resolve references, only
+ * their shape. `path` decides which of the three value types applies.
  */
-function leafProblem(value) {
+function leafProblem(path, value) {
   if (typeof value !== "string") return "is not a colour";
+
+  if (isSyntaxOrMarkdown(path)) {
+    if (HEX_RE.test(value)) return null;
+    const hue = HUE_VALUE_RE.exec(value);
+    if (hue && hue[2] !== undefined) {
+      if (!HUES.includes(hue[1])) return `references unknown hue "${hue[1]}"`;
+      if (!STEPS.includes(hue[2])) return `references unknown hue step "${hue[2]}"`;
+      return null;
+    }
+    // A whole-hue reference, a token reference, "transparent", or junk: the
+    // loader's syntax/markdown type accepts a hex or a step-qualified hue
+    // reference only.
+    return `is not a syntax/markdown colour: ${value}`;
+  }
+
   if (value === "transparent" || HEX_RE.test(value) || TOKEN_REF_RE.test(value)) return null;
   const hue = HUE_VALUE_RE.exec(value);
   if (!hue) return `is not a colour: ${value}`;
   if (!HUES.includes(hue[1])) return `references unknown hue "${hue[1]}"`;
-  if (hue[2] !== undefined && !STEPS.includes(hue[2])) {
-    return `references unknown hue step "${hue[2]}"`;
+  if (hue[2] === undefined) {
+    return `is a whole-hue reference, but a colour needs a step ($hue.${hue[1]}.<step>)`;
   }
+  if (!STEPS.includes(hue[2])) return `references unknown hue step "${hue[2]}"`;
   return null;
 }
 
@@ -178,12 +216,13 @@ export function validateTheme(theme) {
     }
   }
 
-  // 2 — leaf shape: every token that exists holds a legal colour value.
+  // 2 — leaf shape: every token that exists holds a value legal in its
+  // position (a colour, or the stricter syntax/markdown subtype).
   for (const [label, tree] of trees) {
     for (const path of tokenPaths()) {
       const value = lookup(tree, path);
       if (value === undefined) continue;
-      const problem = leafProblem(value);
+      const problem = leafProblem(path, value);
       if (problem) errors.push(`[${label}] ${path} ${problem}`);
     }
   }
@@ -212,11 +251,12 @@ export function validateTheme(theme) {
         errors.push(`[${mode}] hue ${name} is missing`);
         continue;
       }
-      // A string is an alias; follow it (and any chain of aliases) to the ramp,
-      // remembering a step the alias pinned. A step-pinned alias needs only
-      // that step; an unpinned one needs the whole ramp.
+      // A string is an alias; follow it (and any chain of aliases) to the ramp.
+      // A hue alias must be a *whole-hue* reference: the loader looks the whole
+      // `/^\$hue\.(.+)$/` capture up in the hue map, so a step-qualified alias
+      // throws. The alias therefore never pins a step, and the target ramp must
+      // be complete.
       let target = ramp;
-      let pinned;
       const seen = new Set();
       while (typeof target === "string") {
         const alias = HUE_VALUE_RE.exec(target);
@@ -226,12 +266,16 @@ export function validateTheme(theme) {
           break;
         }
         seen.add(target);
+        if (alias[2] !== undefined) {
+          errors.push(`[${mode}] hue ${name} aliases a single step (${target}); a hue alias must reference a whole hue`);
+          target = undefined;
+          break;
+        }
         if (!HUES.includes(alias[1])) {
           errors.push(`[${mode}] hue ${name} aliases unknown hue "${alias[1]}"`);
           target = undefined;
           break;
         }
-        pinned = alias[2] ?? pinned;
         target = tree.hue[alias[1]];
       }
       if (target === undefined) continue;
@@ -239,7 +283,7 @@ export function validateTheme(theme) {
         errors.push(`[${mode}] hue ${name} is neither a ramp nor a hue alias`);
         continue;
       }
-      for (const step of pinned === undefined ? STEPS : [pinned]) {
+      for (const step of STEPS) {
         if (typeof target[step] !== "string") errors.push(`[${mode}] hue ${name} is missing step ${step}`);
       }
     }

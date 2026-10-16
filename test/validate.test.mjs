@@ -23,7 +23,7 @@ const huesFor = (ramp) => ({
   cyan: ramp,
   blue: ramp,
   purple: ramp,
-  accent: "$hue.cyan.400",
+  accent: "$hue.cyan",
   interactive: "$hue.blue",
   neutral: "$hue.gray",
 });
@@ -36,9 +36,9 @@ const spec = () => ({
       base: "#c6d4e0",
       muted: "#7d90a3",
       action: {
-        primary: allStates("$hue.accent"),
-        secondary: allStates("$hue.neutral"),
-        destructive: allStates("$hue.red"),
+        primary: allStates("$hue.accent.400"),
+        secondary: allStates("$hue.neutral.500"),
+        destructive: allStates("$hue.red.400"),
       },
       formfield: allStates("$text.base"),
       feedback: {
@@ -52,9 +52,9 @@ const spec = () => ({
       base: "#0e1620",
       raised: { base: "#16202c", high: "#1c2934", max: "#243341" },
       action: {
-        primary: allStates("$hue.accent"),
-        secondary: allStates("$hue.neutral"),
-        destructive: allStates("$hue.red"),
+        primary: allStates("$hue.accent.400"),
+        secondary: allStates("$hue.neutral.500"),
+        destructive: allStates("$hue.red.400"),
       },
       formfield: allStates("$background.raised.base"),
       feedback: {
@@ -101,10 +101,10 @@ const spec = () => ({
       link: "$hue.interactive.300",
       linkText: "$hue.interactive.200",
       code: "$hue.green.300",
-      blockQuote: "$text.muted",
+      blockQuote: "$hue.gray.400",
       emphasis: "$hue.gray.100",
       strong: "$hue.gray.100",
-      horizontalRule: "$text.muted",
+      horizontalRule: "$hue.gray.400",
       listItem: "$hue.gray.200",
       listEnumeration: "$hue.gray.300",
       image: "$hue.gray.300",
@@ -257,27 +257,69 @@ test("a step on a whole-hue alias resolves to that hue's step", () => {
   );
 });
 
-test("a requested step on a step-qualified alias is reported, naming the alias and step", () => {
+test("a step-qualified hue alias is reported, naming the hue and step", () => {
   const t = fixture();
-  t.light.text.muted = "$hue.accent.500";
+  t.light.hue.accent = "$hue.cyan.400";
   const { errors } = validateTheme(t);
   assert.ok(
-    errors.some((e) => e.includes("light") && e.includes("text.muted") && e.includes("accent") && e.includes("500")),
+    errors.some((e) => e.includes("light") && e.includes("accent") && e.includes("400")),
     errors.join("\n"),
   );
 });
 
-test("the contrast matrix covers syntax and diff text on the named surfaces", () => {
-  const surfaces = new Set(CONTRAST_RULES.map((rule) => rule.bg));
-  for (const surface of [
+test("a whole-hue reference in a colour position is reported", () => {
+  const t = fixture();
+  t.base.text.muted = "$hue.accent";
+  const { errors } = validateTheme(t);
+  assert.ok(
+    errors.some((e) => e.includes("text.muted") && e.includes("whole-hue")),
+    errors.join("\n"),
+  );
+});
+
+test("a token reference in a syntax value is reported", () => {
+  const t = fixture();
+  t.base.syntax.keyword = "$text.muted";
+  const { errors } = validateTheme(t);
+  assert.ok(
+    errors.some((e) => e.includes("syntax.keyword") && e.includes("syntax/markdown")),
+    errors.join("\n"),
+  );
+});
+
+test("transparent in a syntax value is reported", () => {
+  const t = fixture();
+  t.base.syntax.keyword = "transparent";
+  const { errors } = validateTheme(t);
+  assert.ok(
+    errors.some((e) => e.includes("syntax.keyword") && e.includes("syntax/markdown")),
+    errors.join("\n"),
+  );
+});
+
+test("the contrast matrix is pinned to the approved floors and surfaces", () => {
+  const surfaces = [
     "background.base",
     "background.raised.max",
     "diff.background.added",
     "diff.background.removed",
-  ]) {
-    assert.ok(surfaces.has(surface), `matrix is missing ${surface}`);
-  }
-  for (const fg of ["text.base", "text.muted", "syntax.comment", "diff.text.added", "diff.text.removed", "diff.text.context"]) {
-    assert.ok(CONTRAST_RULES.some((rule) => rule.fg === fg), `matrix is missing ${fg}`);
-  }
+  ];
+  const floors = [
+    ["text.base", 4.5],
+    ["text.muted", 3],
+    ["syntax.comment", 3],
+    ["syntax.keyword", 3],
+    ["syntax.function", 3],
+    ["syntax.variable", 3],
+    ["syntax.string", 3],
+    ["syntax.number", 3],
+    ["syntax.type", 3],
+    ["syntax.operator", 3],
+    ["syntax.punctuation", 3],
+    ["diff.text.added", 3],
+    ["diff.text.removed", 3],
+    ["diff.text.context", 3],
+  ];
+  const expected = floors.flatMap(([fg, min]) => surfaces.map((bg) => ({ fg, bg, min })));
+  assert.deepEqual(CONTRAST_RULES, expected);
 });
