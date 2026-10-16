@@ -4,7 +4,7 @@ import fjord from "../src/palettes/fjord.mjs";
 import { buildTheme } from "../src/theme.mjs";
 import { validateTheme } from "../src/validate.mjs";
 import { tokenPaths } from "../src/contract.mjs";
-import { hexToRgb, srgbToOklab } from "../src/color.mjs";
+import { hexToRgb, srgbToOklab, contrastRatio } from "../src/color.mjs";
 
 const L = (hex) => srgbToOklab(hexToRgb(hex)).L;
 const theme = () => buildTheme(fjord);
@@ -84,9 +84,27 @@ test("the action groups resolve to measurable colours in both modes", () => {
     for (const group of ["text", "background"]) {
       for (const action of ["primary", "secondary", "destructive"]) {
         for (const [state, value] of Object.entries(at(t[mode], `${group}.action.${action}`))) {
+          // An action surface may be transparent — the platform's own themes
+          // paint it that way. Anything else must be a real colour, never a
+          // whole-hue reference.
+          if (value === "transparent") continue;
           assert.match(resolve(t, mode, value), /^#[\da-f]{6}$/i, `${mode} ${group}.action.${action}.${state}`);
         }
       }
+    }
+  }
+});
+
+// The `/` picker paints its cursor row with the action's hovered background and
+// the base text on top. Binding both to the same accent step made that row
+// unreadable; this pins the row, not just the token shapes.
+test("the cursor row's fill is readable under the base text", () => {
+  const t = theme();
+  for (const mode of ["dark", "light"]) {
+    for (const action of ["primary", "secondary", "destructive"]) {
+      const fill = resolve(t, mode, at(t[mode], `background.action.${action}`).$hovered);
+      const ratio = contrastRatio(resolve(t, mode, "$text.base"), fill);
+      assert.ok(ratio >= 4.5, `${mode} ${action} row is ${ratio.toFixed(2)}:1 on ${fill}`);
     }
   }
 });

@@ -34,16 +34,40 @@ const allStates = (value) => ({
 });
 
 /**
- * The six action groups. The accent's step is pinned at the reference site, not
- * on the alias: primary is cyan.400 dark / cyan.300 light — the approved
- * anchors — and secondary/destructive use neutral and red at the step that
- * keeps contrast. Returns the dark-mode binding, which `base` carries and both
- * modes restate.
+ * The six action *text* groups. The accent's step is pinned at the reference
+ * site, not on the alias: primary is cyan.400 dark / cyan.300 light — the
+ * approved anchors — and secondary/destructive use neutral and red at the step
+ * that keeps contrast. Returns the dark-mode binding, which `base` carries and
+ * both modes restate.
  */
 const actionGroups = (accent, neutral, red) => ({
   primary: allStates(accent),
   secondary: allStates(neutral),
   destructive: allStates(red),
+});
+
+/**
+ * Action *backgrounds* are surfaces, never the hue itself. OpenCode's own
+ * themes paint an action's hover/focus with a neutral surface step, because a
+ * filled accent under accent-coloured text is unreadable — that is what washed
+ * out the `/` picker's cursor row. These are `$hue.*` refs, so they follow the
+ * mode on their own and need no per-mode override.
+ */
+const surfaceStates = () => ({
+  base: "transparent",
+  // One step from the background (gray.900), as OpenCode's own hover is from
+  // its own background. Keeps the cursor row readable, not just visible.
+  $hovered: "$hue.neutral.800",
+  $focused: "$hue.interactive.200",
+  $pressed: "$hue.neutral.800",
+  $selected: "transparent",
+  $disabled: "transparent",
+});
+
+const actionSurfaces = () => ({
+  primary: surfaceStates(),
+  secondary: surfaceStates(),
+  destructive: surfaceStates(),
 });
 
 export default {
@@ -67,7 +91,7 @@ export default {
     background: {
       base: "#0e1620",
       raised: { base: "#16202c", high: "#1c2934", max: "#243341" },
-      action: actionGroups("$hue.accent.400", "$hue.neutral.500", "$hue.red.400"),
+      action: actionSurfaces(),
       formfield: allStates("$background.raised.base"),
       feedback: {
         error: { base: "$hue.red.700" },
@@ -157,7 +181,6 @@ export default {
       },
       tokens: {
         text: { action: actionGroups("$hue.accent.400", "$hue.neutral.500", "$hue.red.400") },
-        background: { action: actionGroups("$hue.accent.400", "$hue.neutral.500", "$hue.red.400") },
         syntax: { comment: "$hue.gray.500" },
         markdown: { blockQuote: "$hue.gray.500", horizontalRule: "$hue.gray.500" },
       },
@@ -186,7 +209,6 @@ export default {
         background: {
           base: "#dbe3ea",
           raised: { base: "#cfd8e1", high: "#c8d2dc", max: "#c1cbd6" },
-          action: actionGroups("$hue.accent.300", "$hue.neutral.500", "$hue.red.300"),
         },
         border: { base: "#b6c2ce" },
         scrollbar: { base: "#b6c2ce" },
