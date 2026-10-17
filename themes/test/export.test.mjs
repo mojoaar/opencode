@@ -85,6 +85,23 @@ test("ramps are every hue at all nine steps, per mode", () => {
   }
 });
 
+test("dist/ holds exactly what a fresh build writes", () => {
+  // The build output is committed, so it can go stale silently: this is the guard.
+  const DIST = join(PROJECT_ROOT, "dist");
+  const files = [
+    ...themes.map((name) => `${name}.json`),
+    "tokens/tokens.json",
+    ...themes.map((name) => `tokens/${name}.css`),
+  ];
+  for (const file of files) {
+    assert.equal(
+      readFileSync(join(DIST, file), "utf8"),
+      readFileSync(join(outDir, file), "utf8"),
+      `dist/${file} is stale — run: npm run export`,
+    );
+  }
+});
+
 test("the CSS puts one property name in both mode blocks", () => {
   const css = readFileSync(join(TOKENS, "fjord.css"), "utf8");
   assert.match(css, /\[data-theme="fjord-dark"\]/);

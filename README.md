@@ -13,8 +13,10 @@ CSS custom properties, so they work in a web app too.
 
 ## Install
 
-Copy a theme file into either theme directory — the **filename is the theme name**, so
-`fjord.json` becomes the theme `fjord`:
+Every theme file is committed, so you can take one straight from this repo —
+[`themes/dist/fjord.json`](themes/dist/fjord.json), [`ravn.json`](themes/dist/ravn.json),
+[`nordlys.json`](themes/dist/nordlys.json), [`skumring.json`](themes/dist/skumring.json) — or
+from a clone. The **filename is the theme name**, so `fjord.json` becomes the theme `fjord`:
 
 ```sh
 # for every project
@@ -99,7 +101,9 @@ Two things are worth knowing:
 
 ## Using it outside OpenCode
 
-`npm run export` writes the same colours twice over, for consumers that are not OpenCode:
+`npm run export` writes the same colours twice over, for consumers that are not OpenCode. Both are
+committed under [`themes/dist/tokens/`](themes/dist/tokens), so you can take them without
+building anything:
 
 | file | what it is |
 |---|---|
