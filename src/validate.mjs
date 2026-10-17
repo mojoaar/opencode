@@ -53,8 +53,9 @@ const isSyntaxOrMarkdown = (path) => path.startsWith("syntax.") || path.startsWi
 /**
  * The contrast floors from the design spec: body text, muted text, every syntax
  * hue and diff text, each measured against the base background, the highest
- * raised surface, and the added/removed diff fills. Exported so the test can
- * state what it expects the matrix to contain.
+ * raised surface, and all three diff fills (added, removed, and the context
+ * fill muted code and context text sit on). Exported so the test can state what
+ * it expects the matrix to contain.
  *
  * @type {{fg: string, bg: string, min: number}[]}
  */
@@ -78,6 +79,7 @@ export const CONTRAST_RULES = [
   "background.raised.max",
   "diff.background.added",
   "diff.background.removed",
+  "diff.background.context",
 ].map((bg) => ({ fg, bg, min })));
 
 /** Walk a dotted token path, tolerating the `@dialog` / `$hovered` segments. */
@@ -205,6 +207,12 @@ function resolveColor(tree, value, seen = new Set()) {
  * @returns {{ok: boolean, errors: string[]}}
  */
 export function validateTheme(theme) {
+  // "Never throws on bad input" starts here: everything below dereferences the
+  // tree, so a missing theme is reported rather than thrown.
+  if (theme === null || typeof theme !== "object") {
+    return { ok: false, errors: ["[theme] is not a theme object"] };
+  }
+
   const errors = [];
   // The shared base plus both complete mode trees; each is checked on its own.
   const trees = [["base", theme.base], ...MODES.map((mode) => [mode, theme[mode]])];

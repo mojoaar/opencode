@@ -207,7 +207,9 @@ export default {
         border: { base: "#bdc1c7" },
         scrollbar: { base: "#bdc1c7" },
         diff: {
-          background: { added: "$hue.green.900", removed: "$hue.red.900", context: "$hue.gray.700" },
+          // Matches dark mode: gray.800 is one step from the background (gray.900)
+          // in each mode. gray.700 put muted context text below the 3:1 floor.
+          background: { added: "$hue.green.900", removed: "$hue.red.900", context: "$hue.gray.800" },
         },
         syntax: { comment: "$hue.gray.200" },
         markdown: { blockQuote: "$hue.gray.300", horizontalRule: "$hue.gray.300" },

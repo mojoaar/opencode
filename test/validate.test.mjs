@@ -138,6 +138,14 @@ test("a valid theme produces no errors", () => {
   assert.equal(ok, true);
 });
 
+test("a null or undefined theme is reported, not thrown", () => {
+  for (const input of [null, undefined]) {
+    const { ok, errors } = validateTheme(input);
+    assert.equal(ok, false, String(input));
+    assert.ok(errors.some((e) => e.includes("[theme]")), `${String(input)}: ${errors.join("; ")}`);
+  }
+});
+
 test("a missing token is named in the error", () => {
   const t = fixture();
   delete t.base.scrollbar;
@@ -303,6 +311,7 @@ test("the contrast matrix is pinned to the approved floors and surfaces", () => 
     "background.raised.max",
     "diff.background.added",
     "diff.background.removed",
+    "diff.background.context",
   ];
   const floors = [
     ["text.base", 4.5],
