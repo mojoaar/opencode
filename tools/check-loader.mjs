@@ -27,13 +27,13 @@
 // `function <name>(` — that name is the new end anchor.
 
 import { execFileSync } from "node:child_process";
-import { openSync, readSync, closeSync, readFileSync } from "node:fs";
+import { openSync, readSync, closeSync, readFileSync, readdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const BIN = join(homedir(), ".opencode", "bin", "opencode");
-const THEME_FILE = fileURLToPath(new URL("../dist/fjord.json", import.meta.url));
+const DIST = fileURLToPath(new URL("../dist", import.meta.url));
 const MODES = ["light", "dark"];
 
 /** The resolver segment, bounded by two distinctive neighbouring functions. */
@@ -118,7 +118,6 @@ function evaluateResolver(text) {
   );
 }
 
-const theme = JSON.parse(readFileSync(THEME_FILE, "utf8"));
 const source = extractResolverSource();
 if (source === undefined) {
   console.error(`check-loader: could not extract the theme resolver from ${BIN}`);
@@ -126,19 +125,29 @@ if (source === undefined) {
 }
 
 const { resolveMode } = evaluateResolver(source);
+const files = readdirSync(DIST).filter((f) => f.endsWith(".json")).sort();
+if (files.length === 0) {
+  console.error(`check-loader: no theme files in ${DIST} — run \`node src/build.mjs\` first`);
+  process.exit(1);
+}
+
 let failed = false;
-for (const mode of MODES) {
-  if (theme[mode] === undefined) {
-    console.error(`${THEME_FILE}: FAIL ${mode} mode is missing`);
-    failed = true;
-    continue;
-  }
-  try {
-    resolveMode(theme, mode);
-    console.log(`${THEME_FILE}: ${mode} OK`);
-  } catch (error) {
-    console.error(`${THEME_FILE}: ${mode} FAIL ${error.message}`);
-    failed = true;
+for (const file of files) {
+  const path = join(DIST, file);
+  const theme = JSON.parse(readFileSync(path, "utf8"));
+  for (const mode of MODES) {
+    if (theme[mode] === undefined) {
+      console.error(`${path}: FAIL ${mode} mode is missing`);
+      failed = true;
+      continue;
+    }
+    try {
+      resolveMode(theme, mode);
+      console.log(`${path}: ${mode} OK`);
+    } catch (error) {
+      console.error(`${path}: ${mode} FAIL ${error.message}`);
+      failed = true;
+    }
   }
 }
 
