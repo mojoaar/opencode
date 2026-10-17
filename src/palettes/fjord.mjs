@@ -148,10 +148,10 @@ export default {
     },
     markdown: {
       text: "$hue.gray.100",
-      heading: "$hue.cyan.300",
+      heading: "$hue.purple.300",
       link: "$hue.interactive.300",
       linkText: "$hue.interactive.200",
-      code: "$hue.green.300",
+      code: "$hue.cyan.300",
       blockQuote: "$hue.gray.500",
       emphasis: "$hue.gray.100",
       strong: "$hue.gray.100",
