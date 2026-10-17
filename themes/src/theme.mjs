@@ -7,6 +7,7 @@
 // OpenCode's built-ins — so this module clones `base` per mode and layers that
 // mode's overrides over the clone.
 
+import { readFileSync } from "node:fs";
 import { expandRamp } from "./ramp.mjs";
 import { HUES } from "./contract.mjs";
 
@@ -25,6 +26,9 @@ export const DIALOG_DEFAULT = {
 /** Cosmetic: the documented schema URL 404s, so this is for readers only. */
 const SCHEMA = "https://opencode.ai/theme.json";
 
+/** The pack version, so an installed theme file says which release it came from. */
+const VERSION = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).version;
+
 const isPlainObject = (value) =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
@@ -42,7 +46,7 @@ function merge(target, overrides) {
  * Turn a palette spec into a complete theme file object.
  *
  * @param {object} spec the shape Tasks 5 and 7 author and consume
- * @returns {{$schema: string, base: object, light: object, dark: object}}
+ * @returns {{$schema: string, version: string, base: object, light: object, dark: object}}
  */
 export function buildTheme(spec) {
   const base = structuredClone(spec.base);
@@ -51,6 +55,7 @@ export function buildTheme(spec) {
 
   return {
     $schema: SCHEMA,
+    version: VERSION,
     base,
     light: buildMode("light", spec.modes.light, base),
     dark: buildMode("dark", spec.modes.dark, base),
