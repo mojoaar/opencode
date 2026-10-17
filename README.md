@@ -7,6 +7,8 @@ too.
 
 ![The four themes](themes/assets/screenshots/hero.webp)
 
+*The previews below are rendered from the exported tokens, not captures of the running TUI.*
+
 ---
 
 ## Install
