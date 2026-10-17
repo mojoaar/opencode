@@ -281,17 +281,48 @@ signature accent is barely an accent.
 
 ### Light modes for ravn, nordlys, skumring
 
-Not yet drawn. To be built in the same overcast character as fjord's light
-mode, each keeping its own signature accent so the four stay distinct.
-skumring stays the greyest, nordlys keeps the most colour.
+Settled: **each theme's overcast is tinted toward its own signature.** The
+four light modes share fjord's construction discipline — same lightness
+ladder, same contrast floors, raised band kept inside the
+background/raised/border trio — but each rotates its neutral hue toward its
+own character, so the four read as four cold places rather than one grey
+repeated four times. fjord keeps the coldest sea blue-grey and is unchanged.
 
-**Unresolved on purpose:** whether the three share fjord's exact neutrals
-(background, raised, border, text, muted) and differ only by accent and
-syntax, or each tints its neutrals toward its own character — ravn's
-violet sheen, skumring's grey-violet. This is the decision that decides
-whether the four light modes stay distinct, which is the pack's main
-anti-goal. It does not block fjord, so it gets settled by showing the
-author the four in daylight when we draw them, not by asking now.
+Method: keep fjord light's OKLab lightness, rotate a/b to the theme's
+signature hue, scale chroma by `k`. Every value measures within 0.05 of
+fjord's own ratios (text/background ~10.9-11.0:1, muted/raised.max
+3.38-3.42:1), so the floors and the visual weight are identical across the
+four.
+
+| | fjord (unchanged) | ravn (292deg x0.85) | nordlys (172deg x0.95) | skumring (262deg x0.45) |
+|---|---|---|---|---|
+| text | `#202c38` | `#2b2936` | `#1d2f29` | `#272b31` |
+| muted | `#586a7a` | `#686577` | `#556e65` | `#636871` |
+| border | `#b6c2ce` | `#c0bfcc` | `#b4c5bf` | `#bdc1c7` |
+| raised.max | `#c1cbd6` | `#cac8d4` | `#bfcec8` | `#c7cacf` |
+| raised.high | `#c8d2dc` | `#d0cfda` | `#c6d4cf` | `#ced1d6` |
+| raised.base | `#cfd8e1` | `#d7d5df` | `#cedad6` | `#d4d7dc` |
+| background | `#dbe3ea` | `#e2e1e9` | `#dae5e1` | `#e0e2e6` |
+
+The grey ramps follow the same rotation:
+
+| gray | fjord | ravn | nordlys | skumring |
+|---|---|---|---|---|
+| 100 | `#202c38` | `#2b2936` | `#1d2f29` | `#272b31` |
+| 300 | `#4a5a6b` | `#585668` | `#465e56` | `#545861` |
+| 500 | `#7b8b9c` | `#898698` | `#778f87` | `#848992` |
+| 700 | `#b3c0cc` | `#bebcca` | `#b1c3bc` | `#bbbec5` |
+| 900 | `#dbe3ea` | `#e2e1e9` | `#dae5e1` | `#e0e2e6` |
+
+The light **chromatic** ramps are not retinted: the three themes reuse
+fjord's approved light ramps verbatim. The four then share one syntax
+family, so code reads the same in all four, and identity is carried by the
+neutrals above plus the signature accent. Only the greys and the surfaces
+are tinted.
+
+Each theme's light accent stays a step of its own hue — fjord
+`$hue.cyan.300` `#22646f`, ravn `$hue.purple.300` `#514173`, nordlys
+`$hue.green.300` `#2f6349`, skumring `$hue.blue.300` `#2c5f80`.
 
 ## My calls
 
@@ -327,8 +358,9 @@ And these, added after the builder check:
   mockups only showed odd steps (100, 300, 500, 700, 900), which is why the
   signature hexes looked like they sat off the ramps — fjord's `#4aa7b3` is the
   `cyan.400` that never got drawn, so its accent actions bind `$hue.accent.400`
-  in dark and `$hue.accent.300` in light. ravn's violet is `purple.300` and
-  nordlys's aurora green is `green.300` already. No retuning of any approved hue
+  in dark and `$hue.accent.300` in light. ravn's violet is `purple.300`,
+  nordlys's aurora green is `green.300` and skumring's pale ice is
+  `blue.300` already. No retuning of any approved hue
   is needed.
 - **Surfaces are literal values in `base`** — background, raised, border,
   text and muted are not required to be addressable steps of a ramp. The
@@ -349,8 +381,9 @@ And these, added after the builder check:
 2. Validate the shape, run the contrast check, show the final palette.
 3. Install it to `~/.config/opencode/themes/` and use it in the real
    terminal for a while.
-4. Only then draw the light modes for ravn, nordlys and skumring and
-   finish the other three.
+4. Then the light modes for ravn, nordlys and skumring, settled as drawn in
+   "Light modes for ravn, nordlys, skumring" above, and the three remaining
+   themes built from fjord's palette module as their template.
 5. Step back and compare all four side by side in both modes, as the
    family test.
 
@@ -369,8 +402,7 @@ And these, added after the builder check:
 
 ## Left to the builder
 
-- The exact interpolation sweep for the four intermediate steps per hue,
-  and the light-mode palettes for the three themes not yet drawn.
+- The exact interpolation sweep for the four intermediate steps per hue.
 - The full semantic token tree: every `text`, `background`, `border`,
   `scrollbar`, `diff`, `syntax` and `markdown` token, plus interaction
   states for actions and form fields, and the `@dialog` overrides.
