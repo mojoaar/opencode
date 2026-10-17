@@ -40,11 +40,13 @@ const allStates = (value) => ({
  * that keeps contrast. Returns the dark-mode binding, which `base` carries and
  * both modes restate.
  */
-const actionGroups = (accent, neutral, red) => ({
-  primary: allStates(accent),
-  secondary: allStates(neutral),
-  destructive: allStates(red),
-});
+const actionGroups = (accent, neutral, red) => {
+  // The focused row's fill is `interactive.200` (see `surfaceStates`), so its
+  // text inverts to the background colour — the pairing OpenCode's own themes
+  // use. A token ref, so it follows the mode without a restatement.
+  const group = (hue) => ({ ...allStates(hue), $focused: "$background.base" });
+  return { primary: group(accent), secondary: group(neutral), destructive: group(red) };
+};
 
 /**
  * Action *backgrounds* are surfaces, never the hue itself. OpenCode's own

@@ -3,7 +3,7 @@
 // The installed binary is a bun single-file executable, but its modules are
 // embedded as readable JS (not bytecode), so the loader's resolver can be lifted
 // straight out and run here. This extracts the contiguous source slice from
-// `function ae(e)` to the next `function XI(` — the segment holding `_1`, `de`,
+// `function ae(e)` to the next `function ZI(` — the segment holding `_1`, `de`,
 // `_r`, `Jr`, `Wr`, `Xr` (the per-mode resolve the loader runs at theme load) —
 // stubs the four imports the resolver path never touches, and calls the
 // loader's own `_1(file, mode)` for each mode. Per-mode OK or the thrown message
@@ -13,9 +13,18 @@
 // binary) and a fixed-string grep over it, which the CI-less, dependency-free
 // test suite must not depend on. Run `npm run check:loader` instead.
 //
-// The extraction is anchored on source text. A future OpenCode that renames
-// `ae`/`XI` or compiles the chunk will make this fail loudly rather than pass
-// silently — which is the point of a check that must actually check.
+// The extraction is anchored on source text, and minified names change between
+// OpenCode releases (v2.0.29 had `function XI(`, v2.0.32 has `function ZI(`), so
+// the slice is checked for the resolver's own error strings before it is run: a
+// rename fails loudly here instead of silently checking nothing. To re-derive
+// the anchors:
+//
+//   grep -a -b -o -F 'function ae(e)' ~/.opencode/bin/opencode
+//   grep -a -b -o -F 'is not a color' ~/.opencode/bin/opencode   # pick the offset in the same chunk
+//   dd bs=1 skip=<that offset> count=3000 if=~/.opencode/bin/opencode | strings -a
+//
+// Trace forward from `$e(e)` (the resolver's last function) to the next
+// `function <name>(` — that name is the new end anchor.
 
 import { execFileSync } from "node:child_process";
 import { openSync, readSync, closeSync, readFileSync } from "node:fs";
@@ -29,7 +38,10 @@ const MODES = ["light", "dark"];
 
 /** The resolver segment, bounded by two distinctive neighbouring functions. */
 const SLICE_START = "function ae(e)";
-const SLICE_END = "function XI(e)";
+const SLICE_END = "function ZI(e)";
+
+/** Strings the real resolver must contain; a renamed anchor yields a shorter slice. */
+const SLICE_REQUIRES = ['references a missing hue', "is not a color"];
 
 /** Byte offsets of a fixed string in the binary. `grep -a -b -o -F` is cheap. */
 function offsets(anchor) {
@@ -59,11 +71,16 @@ function readAt(offset, length) {
  */
 function extractResolverSource() {
   const ends = offsets(SLICE_END);
+  const known = offsets("is not a color");
   for (const start of offsets(SLICE_START)) {
     const end = ends.find((offset) => offset > start);
     if (end === undefined) continue;
+    // Only accept a slice that reaches past the colour check; otherwise the
+    // end anchor is stale and the check would pass without testing colours.
+    if (!known.some((offset) => offset > start && offset < end)) continue;
     const text = readAt(start, end - start);
     if (/[^\t\n\r\x20-\x7e]/.test(text)) continue;
+    if (!SLICE_REQUIRES.every((needle) => text.includes(needle))) continue;
     return text;
   }
   return undefined;
@@ -86,7 +103,7 @@ function evaluateResolver(text) {
   }
   const z = (literals) => ({ literals });
   const factory = new Function(
-    "Be", "b", "v", "Q", "Mr", "re", "te", "Tp",
+    "Be", "b", "v", "Q", "Mr", "re", "te", "Tp", "Fr",
     `${text}\nreturn { resolveMode: _1 };`,
   );  return factory(
     Be,
@@ -97,6 +114,7 @@ function evaluateResolver(text) {
     {},
     {},
     () => false,
+    () => () => {},
   );
 }
 

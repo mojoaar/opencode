@@ -98,13 +98,19 @@ test("the action groups resolve to measurable colours in both modes", () => {
 // The `/` picker paints its cursor row with the action's hovered background and
 // the base text on top. Binding both to the same accent step made that row
 // unreadable; this pins the row, not just the token shapes.
-test("the cursor row's fill is readable under the base text", () => {
+test("the cursor row is readable, hovered and focused", () => {
   const t = theme();
   for (const mode of ["dark", "light"]) {
     for (const action of ["primary", "secondary", "destructive"]) {
       const fill = resolve(t, mode, at(t[mode], `background.action.${action}`).$hovered);
       const ratio = contrastRatio(resolve(t, mode, "$text.base"), fill);
       assert.ok(ratio >= 4.5, `${mode} ${action} row is ${ratio.toFixed(2)}:1 on ${fill}`);
+
+      // Focused is the row the cursor is actually on: bright fill, inverted text.
+      const focusFill = resolve(t, mode, at(t[mode], `background.action.${action}`).$focused);
+      const focusText = resolve(t, mode, at(t[mode], `text.action.${action}`).$focused);
+      const focusRatio = contrastRatio(focusText, focusFill);
+      assert.ok(focusRatio >= 4.5, `${mode} ${action} focused row is ${focusRatio.toFixed(2)}:1 (${focusText} on ${focusFill})`);
     }
   }
 });
