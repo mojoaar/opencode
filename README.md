@@ -53,8 +53,8 @@ One day in one cold place.
 
 ### fjord — daylight on cold water
 
-Cold sea blue-grey with a teal accent. The flagship: the coldest, and the one that leans
-hardest into blue.
+Cold sea blue-grey with a teal accent. The flagship, built first, and the one that leans hardest
+into blue.
 
 ![fjord](themes/assets/screenshots/fjord.webp)
 
