@@ -289,14 +289,18 @@ own character, so the four read as four cold places rather than one grey
 repeated four times. fjord keeps the coldest sea blue-grey and is unchanged.
 
 Method: keep fjord light's OKLab lightness, rotate a/b to the theme's
-signature hue, scale chroma by `k`. Every value measures within 0.05 of
-fjord's own ratios (text/background ~10.9-11.0:1, muted/raised.max
-3.38-3.42:1), so the floors and the visual weight are identical across the
-four.
+signature hue, scale chroma by `k`. Measured text/background ratios are fjord
+11.69:1, ravn 10.98:1, nordlys 10.92:1, skumring 10.97:1, and
+muted/raised.max is 3.38-3.42:1 (fjord 3.40, ravn 3.42, nordlys 3.39,
+skumring 3.41), so the floors and the visual weight are identical across the
+four. fjord's higher ratio follows its own approved light body text `#1b2733`
+(see the table below), a touch darker than the `#202c38` its gray ramp step
+100 carries; the three tinted ladders derive their text from fjord's gray
+step 100 and so land near 11:1.
 
 | | fjord (unchanged) | ravn (292deg x0.85) | nordlys (172deg x0.95) | skumring (262deg x0.45) |
 |---|---|---|---|---|
-| text | `#202c38` | `#2b2936` | `#1d2f29` | `#272b31` |
+| text | `#1b2733` | `#2b2936` | `#1d2f29` | `#272b31` |
 | muted | `#586a7a` | `#686577` | `#556e65` | `#636871` |
 | border | `#b6c2ce` | `#c0bfcc` | `#b4c5bf` | `#bdc1c7` |
 | raised.max | `#c1cbd6` | `#cac8d4` | `#bfcec8` | `#c7cacf` |
@@ -358,18 +362,26 @@ And these, added after the builder check:
   mockups only showed odd steps (100, 300, 500, 700, 900), which is why the
   signature hexes looked like they sat off the ramps — fjord's `#4aa7b3` is the
   `cyan.400` that never got drawn, so its accent actions bind `$hue.accent.400`
-  in dark and `$hue.accent.300` in light. ravn's violet is `purple.300`,
-  nordlys's aurora green is `green.300` and skumring's pale ice is
-  `blue.300` already. No retuning of any approved hue
-  is needed.
+  in dark and `$hue.accent.300` in light. ravn's violet is `purple.300` and
+  nordlys's aurora green is `green.300`. skumring's pale ice is the same
+  accepted consequence: its approved signature is `#8fa8cc`, another hex that
+  never got drawn as a ramp step, and its accent binds `$hue.accent.300`, which
+  ships as `blue.300` `#93aacb` — the nearest approved step. As for fjord, the
+  accent aliases the hue and the actual colour is the step chosen at the
+  reference site, so no approved hue is retuned.
 - **Surfaces are literal values in `base`** — background, raised, border,
   text and muted are not required to be addressable steps of a ramp. The
   gray ramps are not retuned to absorb them.
 - **`interactive` aliases `blue`, not `accent`**, and the same for all
   four themes. Blue is the one hue that is cold and present in every theme,
   so links, inputs and selectors read as interactive everywhere. `accent`
-  carries the theme's identity; `interactive` carries the shared
-  affordance. Without this, skumring's controls would go near-grey.
+  carries the theme's identity; `interactive` carries the shared affordance.
+  For skumring the two deliberately coincide: its signature accent is
+  `$hue.blue` as well, so its links and its primary-action labels are the
+  same colour. That sameness is skumring's "barely an accent" identity, not
+  an oversight — the reason to keep `interactive` on blue is the *other*
+  three themes, whose accents are teal, violet and green; skumring's own
+  controls are blue because its accent is blue.
 - **The contrast checker runs against a matrix, not one surface**: body
   text, muted text, every syntax hue and diff text, each checked against
   `background.base`, `background.raised.max`, and the added/removed diff
