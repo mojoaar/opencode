@@ -1,9 +1,9 @@
 # Nordic themes for OpenCode
 
-An **unofficial** theme pack for the [OpenCode](https://opencode.ai) terminal UI — four themes
-named after a Danish day, each with a dark mode and a light one. They are plain JSON theme
-files, and the same colours are exported as CSS custom properties, so they work in a web app
-too.
+An **unofficial** theme pack for the [OpenCode](https://opencode.ai) terminal UI. Four Danish
+words — fjord, ravn, nordlys, skumring — telling one day in one cold place, each theme with a
+dark mode and a light one. They are plain JSON theme files, and the same colours are exported as
+CSS custom properties, so they work in a web app too.
 
 ![The four themes](themes/assets/screenshots/hero.webp)
 
